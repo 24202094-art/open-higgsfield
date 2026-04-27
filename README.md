@@ -402,6 +402,9 @@ cd Open-Generative-AI
 # Install dependencies (installs root + packages/studio workspace)
 npm install
 
+# Configure API base URL (optional — needed if using your own gateway)
+cp .env.example .env.local
+
 # Start the development server
 npm run dev
 ```
@@ -475,7 +478,7 @@ The app communicates with [Muapi.ai](https://muapi.ai) using a two-step pattern:
 1. **Submit** — `POST /api/v1/{model-endpoint}` with prompt and parameters
 2. **Poll** — `GET /api/v1/predictions/{request_id}/result` until status is `completed`
 
-Authentication uses the `x-api-key` header. During development, a Vite proxy handles CORS by routing `/api` requests to `https://api.muapi.ai`.
+Authentication uses the `x-api-key` header. The API base URL is configurable via `NEXT_PUBLIC_MUAPI_BASE_URL` (and optional server override `MUAPI_BASE_URL`), defaulting to `https://api.muapi.ai`.
 
 File uploads use `POST /api/v1/upload_file` (multipart/form-data) and return a hosted URL that is passed to image-conditioned models. For multi-image models the full `images_list` array is forwarded to the API in one request.
 

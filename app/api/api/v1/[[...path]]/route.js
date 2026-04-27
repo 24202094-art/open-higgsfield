@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
-const MUAPI_BASE = 'https://api.muapi.ai';
+const DEFAULT_MUAPI_BASE = 'https://api.muapi.ai';
+const MUAPI_BASE = (process.env.MUAPI_BASE_URL || process.env.NEXT_PUBLIC_MUAPI_BASE_URL || DEFAULT_MUAPI_BASE).replace(/\/$/, '');
 
 function getApiKey(request) {
     const headerKey = request.headers.get('x-api-key');

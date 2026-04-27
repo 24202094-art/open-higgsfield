@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 
+const DEFAULT_MUAPI_BASE = 'https://api.muapi.ai';
+const MUAPI_BASE = (process.env.MUAPI_BASE_URL || process.env.NEXT_PUBLIC_MUAPI_BASE_URL || DEFAULT_MUAPI_BASE).replace(/\/$/, '');
+
 export function middleware(request) {
     const url = request.nextUrl;
     
@@ -13,7 +16,7 @@ export function middleware(request) {
         // Actually, we'll let existing remapping for /api/v1 stay if needed,
         // but we'll remove app/workflow as they need special handling.
         if (url.pathname.startsWith('/api/v1')) {
-            const targetUrl = new URL(url.pathname + url.search, 'https://api.muapi.ai');
+            const targetUrl = new URL(url.pathname + url.search, MUAPI_BASE);
             return NextResponse.rewrite(targetUrl);
         }
     }
