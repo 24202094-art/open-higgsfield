@@ -1,7 +1,7 @@
 import { getModelById, getVideoModelById, getI2IModelById, getI2VModelById, getV2VModelById, getLipSyncModelById } from './models.js';
 
 const DEFAULT_BASE_URL = 'https://api.muapi.ai';
-const BASE_URL = (process.env.NEXT_PUBLIC_MUAPI_BASE_URL || process.env.MUAPI_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, '');
+const BASE_URL = (process.env.MUAPI_BASE_URL || process.env.NEXT_PUBLIC_MUAPI_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, '');
 const PROXY_WF_BASE = '/api/workflow';
 
 async function pollForResult(requestId, key, maxAttempts = 900, interval = 2000) {
