@@ -447,6 +447,13 @@ Open-Generative-AI/
 ├── app/                        # Next.js App Router
 │   ├── layout.js               # Root layout (Tailwind, fonts)
 │   ├── page.js                 # Redirects → /studio
+│   ├── lib/
+│   │   └── gateway-models.js   # Vercel AI Gateway ↔ muapi model ID map
+│   ├── api/
+│   │   ├── generate/
+│   │   │   ├── image/route.js  # Unified image generation (gateway or muapi)
+│   │   │   └── video/route.js  # Unified video generation (gateway or muapi)
+│   │   └── ...                 # Other proxy routes
 │   └── studio/
 │       └── page.js             # Studio page — renders StandaloneShell
 ├── components/
@@ -483,6 +490,83 @@ Authentication uses the `x-api-key` header. The API base URL is configurable via
 File uploads use `POST /api/v1/upload_file` (multipart/form-data) and return a hosted URL that is passed to image-conditioned models. For multi-image models the full `images_list` array is forwarded to the API in one request.
 
 Lip sync jobs use the same two-step pattern: a dedicated `processLipSync()` method accepts `image_url` or `video_url` alongside `audio_url`, dispatches to the model's endpoint, and polls until the output video URL is available.
+
+## 🌐 Vercel AI Gateway (Optional)
+
+As an alternative to muapi.ai, you can route image and video generation through the [Vercel AI Gateway](https://vercel.com/ai-gateway) — a unified API that provides access to hundreds of models from multiple providers with a single key, no token markup, and built-in reliability features.
+
+### What the integration provides
+
+- **One key, hundreds of models** — Flux, Imagen, GPT Image, Recraft, Grok Imagine, Seedream, Kling, Veo, Wan, Seedance, and more
+- **Zero markup on tokens** — pay the same as going to each provider directly
+- **Automatic fallback** — models not yet on the gateway fall through to muapi.ai automatically
+- **Server-side generation** — the `/api/generate/image` and `/api/generate/video` Next.js routes handle auth server-side; the AI Gateway API key is never exposed to the browser
+
+### Setup
+
+1. Go to [Vercel AI Gateway → API Keys](https://vercel.com/dashboard/ai-gateway/api-keys) and create a new key.
+
+2. Copy `.env.example` to `.env.local` and fill in the gateway variables:
+
+   ```bash
+   AI_GATEWAY_ENABLED=true
+   AI_GATEWAY_API_KEY=agk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   NEXT_PUBLIC_AI_GATEWAY_ENABLED=true
+   ```
+
+3. Restart the dev server (`npm run dev`). From this point on, models that have a gateway mapping are generated via `https://ai-gateway.vercel.sh`; models without a mapping continue to use muapi.ai transparently.
+
+### Supported models (gateway path)
+
+| Type | muapi model ID | Gateway model ID |
+|---|---|---|
+| T2I | `flux-schnell` | `prodia/flux-fast-schnell` |
+| T2I | `flux-2-flex` | `bfl/flux-2-flex` |
+| T2I | `flux-2-pro` | `bfl/flux-2-pro` |
+| T2I | `flux-kontext-pro-t2i` | `bfl/flux-kontext-pro` |
+| T2I | `flux-kontext-max-t2i` | `bfl/flux-kontext-max` |
+| T2I | `google-imagen4` | `google/imagen-4.0-generate-001` |
+| T2I | `google-imagen4-fast` | `google/imagen-4.0-fast-generate-001` |
+| T2I | `gpt4o-text-to-image` | `openai/gpt-image-2` |
+| T2I | `gpt-image-1.5` | `openai/gpt-image-1.5` |
+| T2I | `bytedance-seedream-v4` | `bytedance/seedream-4.0` |
+| T2I | `bytedance-seedream-v4.5` | `bytedance/seedream-4.5` |
+| T2I | `seedream-5.0` | `bytedance/seedream-5.0-lite` |
+| T2I | `grok-imagine-text-to-image` | `xai/grok-imagine-image` |
+| T2V | `kling-v2.6-pro-t2v` | `klingai/kling-v2.6-t2v` |
+| T2V | `kling-v3.0-pro-text-to-video` | `klingai/kling-v3.0-t2v` |
+| T2V | `veo3-text-to-video` | `google/veo-3.0-generate-001` |
+| T2V | `veo3.1-text-to-video` | `google/veo-3.1-generate-001` |
+| T2V | `wan2.6-text-to-video` | `alibaba/wan-v2.6-t2v` |
+| T2V | `seedance-v2.0-t2v` | `bytedance/seedance-2.0` |
+| T2V | `grok-imagine-text-to-video` | `xai/grok-imagine-video` |
+| I2V | `kling-v2.6-pro-i2v` | `klingai/kling-v2.6-i2v` |
+| I2V | `kling-v3.0-pro-image-to-video` | `klingai/kling-v3.0-i2v` |
+| I2V | `veo3.1-image-to-video` | `google/veo-3.1-generate-001` |
+| I2V | `wan2.6-image-to-video` | `alibaba/wan-v2.6-i2v` |
+| I2V | `seedance-v2.0-i2v` | `bytedance/seedance-2.0` |
+
+The full mapping is in [`app/lib/gateway-models.js`](app/lib/gateway-models.js).
+
+### How it works
+
+```
+Browser → packages/studio/muapi.js
+            │  (NEXT_PUBLIC_AI_GATEWAY_ENABLED=true)
+            ▼
+  /api/generate/image  or  /api/generate/video   (Next.js server route)
+            │  AI_GATEWAY_ENABLED=true + AI_GATEWAY_API_KEY set
+            │  AND model has a gateway mapping
+            ▼
+  https://ai-gateway.vercel.sh    ← generates image / video
+            │  no gateway mapping
+            ▼
+  https://api.muapi.ai            ← submit → poll fallback
+```
+
+Image responses include a `data:image/...;base64,...` data URI as the `url` field, directly displayable in `<img src>`. Video responses likewise include a `data:video/mp4;base64,...` data URI.
+
+> **Note on video size:** Video base64 data URIs can be tens of megabytes. For production deployments, consider pairing this with [Vercel Blob](https://vercel.com/docs/vercel-blob) to store generated videos and return a hosted URL instead.
 
 ## 🎨 Supported Model Categories
 

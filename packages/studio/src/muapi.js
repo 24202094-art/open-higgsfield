@@ -4,6 +4,26 @@ const DEFAULT_BASE_URL = 'https://api.muapi.ai';
 const BASE_URL = (process.env.MUAPI_BASE_URL || process.env.NEXT_PUBLIC_MUAPI_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, '');
 const PROXY_WF_BASE = '/api/workflow';
 
+// When the app is deployed with Vercel AI Gateway support enabled, route image
+// and video generation through the unified Next.js API routes instead of
+// calling muapi.ai directly from the browser.
+const USE_GATEWAY_ROUTES =
+    typeof process !== 'undefined' &&
+    (process.env.NEXT_PUBLIC_AI_GATEWAY_ENABLED === 'true');
+
+async function postToGatewayRoute(routePath, body) {
+    const response = await fetch(routePath, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Gateway route error: ${response.status} - ${errText.slice(0, 120)}`);
+    }
+    return response.json();
+}
+
 async function pollForResult(requestId, key, maxAttempts = 900, interval = 2000) {
     const pollUrl = `${BASE_URL}/api/v1/predictions/${requestId}/result`;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -51,6 +71,14 @@ async function submitAndPoll(endpoint, payload, key, onRequestId, maxAttempts = 
 export async function generateImage(apiKey, params) {
     const modelInfo = getModelById(params.model);
     const endpoint = modelInfo?.endpoint || params.model;
+    if (USE_GATEWAY_ROUTES) {
+        return postToGatewayRoute('/api/generate/image', {
+            ...params,
+            muapiEndpoint: endpoint,
+            apiKey,
+            type: 't2i',
+        });
+    }
     const payload = { prompt: params.prompt };
     if (params.aspect_ratio) payload.aspect_ratio = params.aspect_ratio;
     if (params.resolution) payload.resolution = params.resolution;
@@ -70,6 +98,14 @@ export async function generateImage(apiKey, params) {
 export async function generateI2I(apiKey, params) {
     const modelInfo = getI2IModelById(params.model);
     const endpoint = modelInfo?.endpoint || params.model;
+    if (USE_GATEWAY_ROUTES) {
+        return postToGatewayRoute('/api/generate/image', {
+            ...params,
+            muapiEndpoint: endpoint,
+            apiKey,
+            type: 'i2i',
+        });
+    }
     const payload = {};
     if (params.prompt) payload.prompt = params.prompt;
     const imageField = modelInfo?.imageField || 'image_url';
@@ -87,6 +123,14 @@ export async function generateI2I(apiKey, params) {
 export async function generateVideo(apiKey, params) {
     const modelInfo = getVideoModelById(params.model);
     const endpoint = modelInfo?.endpoint || params.model;
+    if (USE_GATEWAY_ROUTES) {
+        return postToGatewayRoute('/api/generate/video', {
+            ...params,
+            muapiEndpoint: endpoint,
+            apiKey,
+            type: 't2v',
+        });
+    }
     const payload = {};
     if (params.prompt) payload.prompt = params.prompt;
     if (params.aspect_ratio) payload.aspect_ratio = params.aspect_ratio;
@@ -101,6 +145,14 @@ export async function generateVideo(apiKey, params) {
 export async function generateI2V(apiKey, params) {
     const modelInfo = getI2VModelById(params.model);
     const endpoint = modelInfo?.endpoint || params.model;
+    if (USE_GATEWAY_ROUTES) {
+        return postToGatewayRoute('/api/generate/video', {
+            ...params,
+            muapiEndpoint: endpoint,
+            apiKey,
+            type: 'i2v',
+        });
+    }
     const payload = {};
     if (params.prompt) payload.prompt = params.prompt;
     const imageField = modelInfo?.imageField || 'image_url';
