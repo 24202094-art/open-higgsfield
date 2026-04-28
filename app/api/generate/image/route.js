@@ -79,7 +79,7 @@ async function generateViaMuapi(params) {
 
     if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`muapi request failed: ${response.status} - ${errText.slice(0, 120)}`);
+        throw new Error(`muapi request failed: ${response.status} - ${errText.slice(0, 120)}…`);
     }
 
     const submitData = await response.json();
@@ -130,7 +130,7 @@ export async function POST(request) {
                 const dataUri = await generateViaGateway(gatewayModelId, { ...rest, model });
                 return NextResponse.json({
                     url: dataUri,
-                    request_id: `gateway-${Date.now()}`,
+                    request_id: `gateway-${crypto.randomUUID()}`,
                     status: 'completed',
                 });
             }

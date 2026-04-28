@@ -19,7 +19,7 @@ async function postToGatewayRoute(routePath, body) {
     });
     if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`Gateway route error: ${response.status} - ${errText.slice(0, 120)}`);
+        throw new Error(`Gateway route error: ${response.status} - ${errText.slice(0, 120)}…`);
     }
     return response.json();
 }
